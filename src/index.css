@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-neutral font-sans;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-neutral-dark;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-neutral-dark hover:bg-secondary-dark;
+  }
+  
+  .btn-outline {
+    @apply border border-neutral-light text-neutral-light hover:bg-neutral-lighter;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-card p-6;
+  }
+  
+  .input {
+    @apply w-full px-4 py-2 border border-neutral-lighter rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30;
+  }
+  
+  .badge {
+    @apply px-2 py-1 text-xs font-medium rounded-full;
+  }
+  
+  .badge-high {
+    @apply bg-primary/10 text-primary;
+  }
+  
+  .badge-medium {
+    @apply bg-secondary/20 text-neutral-dark;
+  }
+  
+  .badge-low {
+    @apply bg-neutral-lighter text-neutral-light;
+  }
+}
+
+/* Graph Visualization Styles */
+.node {
+  cursor: pointer;
+}
+
+.node-regulation {
+  fill: #4CAF50;
+}
+
+.node-agency {
+  fill: #FF9800;
+}
+
+.node-bank {
+  fill: #2196F3;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: 0.6;
+  stroke-width: 1px;
+}
+
+/* Chat UI Styles */
+.chat-message {
+  @apply p-4 rounded-lg mb-4 max-w-[80%];
+}
+
+.chat-message-user {
+  @apply bg-primary/10 ml-auto;
+}
+
+.chat-message-bot {
+  @apply bg-neutral-lighter;
+}
