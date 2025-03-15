@@ -27,39 +27,63 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
     // Clear previous visualization
     d3.select(svgRef.current).selectAll("*").remove();
     
+    // Create SVG container
     const svg = d3.select(svgRef.current)
       .attr("width", width)
-      .attr("height", height)
-      .append("g");
+      .attr("height", height);
     
-    // Add zoom functionality
+    // Create container group for zoom
+    const g = svg.append("g");
+    
+    // Add zoom behavior
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on("zoom", (event) => {
-        svg.attr("transform", event.transform);
+        g.attr("transform", event.transform);
       });
     
-    d3.select(svgRef.current).call(zoom);
+    svg.call(zoom);
     
-    // Create a force simulation
-    const simulation = d3.forceSimulation(data.nodes as d3.SimulationNodeDatum[])
+    // Create arrow marker for directed edges
+    svg.append("defs").selectAll("marker")
+      .data(["end"])
+      .enter().append("marker")
+      .attr("id", String)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 25)
+      .attr("refY", 0)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "#999");
+    
+    // Create force simulation
+    const simulation = d3.forceSimulation(data.nodes)
       .force("link", d3.forceLink(data.links)
         .id((d: any) => d.id)
         .distance(100))
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("charge", d3.forceManyBody()
+        .strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(50));
+      .force("collide", d3.forceCollide()
+        .radius(50));
     
     // Create links
-    const link = svg.append("g")
+    const links = g.append("g")
       .selectAll("line")
       .data(data.links)
       .enter()
       .append("line")
-      .attr("class", "link");
+      .attr("class", "link")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.6)
+      .attr("stroke-width", 1)
+      .attr("marker-end", "url(#end)");
     
     // Create link labels
-    const linkLabels = svg.append("g")
+    const linkLabels = g.append("g")
       .selectAll("text")
       .data(data.links)
       .enter()
@@ -70,38 +94,42 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr("dy", "-5")
       .text((d) => d.label);
     
-    // Create nodes
-    const node = svg.append("g")
-      .selectAll("circle")
+    // Create node groups
+    const nodes = g.append("g")
+      .selectAll("g")
       .data(data.nodes)
       .enter()
-      .append("circle")
-      .attr("class", (d) => `node node-${d.type}`)
-      .attr("r", 15)
-      .on("click", (event, d: any) => {
-        if (onNodeClick) {
-          onNodeClick(d.id, d.type);
-        }
-      })
-      .call(d3.drag<SVGCircleElement, any>()
+      .append("g")
+      .attr("class", "node")
+      .call(d3.drag<any, any>()
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended));
     
-    // Create node labels
-    const nodeLabels = svg.append("g")
-      .selectAll("text")
-      .data(data.nodes)
-      .enter()
-      .append("text")
-      .attr("font-size", "12px")
+    // Add circles to nodes
+    nodes.append("circle")
+      .attr("r", 15)
+      .attr("fill", (d) => getNodeColor(d.type))
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2);
+    
+    // Add node labels
+    nodes.append("text")
+      .attr("dy", 25)
       .attr("text-anchor", "middle")
-      .attr("dy", "30")
+      .attr("font-size", "12px")
       .text((d) => d.label);
+    
+    // Add click handler to nodes
+    nodes.on("click", (event, d: any) => {
+      if (onNodeClick) {
+        onNodeClick(d.id, d.type);
+      }
+    });
     
     // Update positions on each tick
     simulation.on("tick", () => {
-      link
+      links
         .attr("x1", (d: any) => d.source.x)
         .attr("y1", (d: any) => d.source.y)
         .attr("x2", (d: any) => d.target.x)
@@ -111,13 +139,8 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         .attr("x", (d: any) => (d.source.x + d.target.x) / 2)
         .attr("y", (d: any) => (d.source.y + d.target.y) / 2);
       
-      node
-        .attr("cx", (d: any) => d.x)
-        .attr("cy", (d: any) => d.y);
-      
-      nodeLabels
-        .attr("x", (d: any) => d.x)
-        .attr("y", (d: any) => d.y);
+      nodes
+        .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
     
     // Drag functions
@@ -136,6 +159,20 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
+    }
+    
+    // Get node color based on type
+    function getNodeColor(type: string): string {
+      switch (type) {
+        case 'regulation':
+          return '#4CAF50';
+        case 'agency':
+          return '#FF9800';
+        case 'bank':
+          return '#2196F3';
+        default:
+          return '#9E9E9E';
+      }
     }
     
     setIsLoading(false);
