@@ -10,37 +10,37 @@ interface GraphVisualizationProps {
   onNodeClick?: (nodeId: string, nodeType: string) => void;
 }
 
-const GraphVisualization: React.FC<GraphVisualizationProps> = ({
-  data,
-  width = 800,
+const GraphVisualization: React.FC<GraphVisualizationProps> = ({ 
+  data, 
+  width = 800, 
   height = 600,
   onNodeClick
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-
+  
   useEffect(() => {
     if (!svgRef.current || !data.nodes.length) return;
-
+    
     setIsLoading(true);
-
+    
     // Clear previous visualization
     d3.select(svgRef.current).selectAll("*").remove();
-
+    
     const svg = d3.select(svgRef.current)
       .attr("width", width)
       .attr("height", height)
       .append("g");
-
+    
     // Add zoom functionality
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on("zoom", (event) => {
         svg.attr("transform", event.transform);
       });
-
+    
     d3.select(svgRef.current).call(zoom);
-
+    
     // Create a force simulation
     const simulation = d3.forceSimulation(data.nodes as d3.SimulationNodeDatum[])
       .force("link", d3.forceLink(data.links)
@@ -49,7 +49,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide().radius(50));
-
+    
     // Create links
     const link = svg.append("g")
       .selectAll("line")
@@ -57,7 +57,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .enter()
       .append("line")
       .attr("class", "link");
-
+    
     // Create link labels
     const linkLabels = svg.append("g")
       .selectAll("text")
@@ -69,7 +69,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr("text-anchor", "middle")
       .attr("dy", "-5")
       .text((d) => d.label);
-
+    
     // Create nodes
     const node = svg.append("g")
       .selectAll("circle")
@@ -87,7 +87,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended));
-
+    
     // Create node labels
     const nodeLabels = svg.append("g")
       .selectAll("text")
@@ -98,7 +98,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr("text-anchor", "middle")
       .attr("dy", "30")
       .text((d) => d.label);
-
+    
     // Update positions on each tick
     simulation.on("tick", () => {
       link
@@ -106,40 +106,40 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         .attr("y1", (d: any) => d.source.y)
         .attr("x2", (d: any) => d.target.x)
         .attr("y2", (d: any) => d.target.y);
-
+      
       linkLabels
         .attr("x", (d: any) => (d.source.x + d.target.x) / 2)
         .attr("y", (d: any) => (d.source.y + d.target.y) / 2);
-
+      
       node
         .attr("cx", (d: any) => d.x)
         .attr("cy", (d: any) => d.y);
-
+      
       nodeLabels
         .attr("x", (d: any) => d.x)
         .attr("y", (d: any) => d.y);
     });
-
+    
     // Drag functions
     function dragstarted(event: any, d: any) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     }
-
+    
     function dragged(event: any, d: any) {
       d.fx = event.x;
       d.fy = event.y;
     }
-
+    
     function dragended(event: any, d: any) {
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
     }
-
+    
     setIsLoading(false);
-
+    
     return () => {
       simulation.stop();
     };

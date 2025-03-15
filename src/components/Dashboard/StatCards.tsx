@@ -9,7 +9,7 @@ interface DashboardStats {
   newRegulations: number;
   recentUpdates: number;
   complianceScore: number;
-  complianceScoreChange: number;
+  complianceScoreChange: number | null;
 }
 
 const StatCards: React.FC = () => {
@@ -75,7 +75,7 @@ const StatCards: React.FC = () => {
           </div>
         </div>
       </div>
-
+      
       <div className="card">
         <div className="flex items-start">
           <div className="p-3 rounded-full bg-secondary/20 mr-4">
@@ -88,7 +88,7 @@ const StatCards: React.FC = () => {
           </div>
         </div>
       </div>
-
+      
       <div className="card">
         <div className="flex items-start">
           <div className="p-3 rounded-full bg-neutral-lighter mr-4">
@@ -101,7 +101,7 @@ const StatCards: React.FC = () => {
           </div>
         </div>
       </div>
-
+      
       <div className="card">
         <div className="flex items-start">
           <div className="p-3 rounded-full bg-primary/10 mr-4">
@@ -110,9 +110,11 @@ const StatCards: React.FC = () => {
           <div>
             <p className="text-neutral-light text-sm">Compliance Score</p>
             <h3 className="text-2xl font-bold mt-1">{stats.complianceScore}%</h3>
-            <p className={`text-xs ${stats.complianceScoreChange >= 0 ? 'text-green-600' : 'text-red-600'} mt-1`}>
-              {stats.complianceScoreChange >= 0 ? '↑' : '↓'} {Math.abs(stats.complianceScoreChange)}% from last quarter
-            </p>
+            {stats.complianceScoreChange !== null && (
+              <p className={`text-xs ${stats.complianceScoreChange >= 0 ? 'text-green-600' : 'text-red-600'} mt-1`}>
+                {stats.complianceScoreChange >= 0 ? '↑' : '↓'} {Math.abs(stats.complianceScoreChange)}% from last quarter
+              </p>
+            )}
           </div>
         </div>
       </div>

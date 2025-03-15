@@ -1,7 +1,7 @@
 """Initial database schema
 
 Revision ID: initial_migration
-Revises:
+Revises: 
 Create Date: 2025-03-09 15:00:00.000000
 
 """
@@ -15,7 +15,6 @@ revision: str = 'initial_migration'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-
 
 def upgrade() -> None:
     # Create users table
@@ -33,7 +32,7 @@ def upgrade() -> None:
         sa.UniqueConstraint('username'),
         sa.UniqueConstraint('email')
     )
-
+    
     # Create jurisdictions table
     op.create_table(
         'jurisdictions',
@@ -48,7 +47,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['parent_id'], ['jurisdictions.id'])
     )
-
+    
     # Create agencies table
     op.create_table(
         'agencies',
@@ -61,7 +60,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['jurisdiction_id'], ['jurisdictions.id']),
         sa.UniqueConstraint('name')
     )
-
+    
     # Create banks table
     op.create_table(
         'banks',
@@ -73,7 +72,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['jurisdiction_id'], ['jurisdictions.id']),
         sa.UniqueConstraint('name')
     )
-
+    
     # Create risk_assessment_units table
     op.create_table(
         'risk_assessment_units',
@@ -89,7 +88,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('name')
     )
-
+    
     # Create regulations table
     op.create_table(
         'regulations',
@@ -111,7 +110,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['agency_id'], ['agencies.id']),
         sa.ForeignKeyConstraint(['jurisdiction_id'], ['jurisdictions.id'])
     )
-
+    
     # Create regulation_categories table
     op.create_table(
         'regulation_categories',
@@ -127,7 +126,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create compliance_steps table
     op.create_table(
         'compliance_steps',
@@ -138,7 +137,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create bank_regulation association table
     op.create_table(
         'bank_regulation',
@@ -148,7 +147,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['bank_id'], ['banks.id']),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create regulation_unit association table
     op.create_table(
         'regulation_unit',
@@ -158,7 +157,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id']),
         sa.ForeignKeyConstraint(['unit_id'], ['risk_assessment_units.id'])
     )
-
+    
     # Create related_regulations association table
     op.create_table(
         'related_regulations',
@@ -168,7 +167,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id']),
         sa.ForeignKeyConstraint(['related_regulation_id'], ['regulations.id'])
     )
-
+    
     # Create compliance_alerts table
     op.create_table(
         'compliance_alerts',
@@ -185,7 +184,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create regulatory_updates table
     op.create_table(
         'regulatory_updates',
@@ -198,7 +197,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create chat_messages table
     op.create_table(
         'chat_messages',
@@ -210,7 +209,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'])
     )
-
+    
     # Create citations table
     op.create_table(
         'citations',
@@ -222,7 +221,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['message_id'], ['chat_messages.id']),
         sa.ForeignKeyConstraint(['regulation_id'], ['regulations.id'])
     )
-
+    
     # Create documents table
     op.create_table(
         'documents',
@@ -244,7 +243,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'])
     )
 
-
 def downgrade() -> None:
     # Drop all tables in reverse order
     op.drop_table('documents')
@@ -263,7 +261,7 @@ def downgrade() -> None:
     op.drop_table('agencies')
     op.drop_table('jurisdictions')
     op.drop_table('users')
-
+    
     # Drop enums
     op.execute('DROP TYPE jurisdictiontype')
     op.execute('DROP TYPE unitcategory')

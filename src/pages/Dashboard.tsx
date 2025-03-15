@@ -41,21 +41,21 @@ const Dashboard: React.FC = () => {
           <button className="btn btn-primary">Generate Compliance Report</button>
         </div>
       </div>
-
+      
       <StatCards />
-
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LatestUpdates />
         <ComplianceAlertsList />
       </div>
-
+      
       {error ? (
         <div className="card p-6 text-red-500 text-center">
           {error}
         </div>
       ) : (
-        <GraphVisualization
-          data={graphData}
+        <GraphVisualization 
+          data={graphData} 
           height={500}
           onNodeClick={handleNodeClick}
         />

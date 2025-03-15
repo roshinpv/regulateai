@@ -10,10 +10,11 @@ from .database import engine, SessionLocal, Base
 from .models import models
 from .seed import seed_database
 from .routers import (
-    agencies, alerts, assistant, auth, banks, graph, regulations,
-    updates, jurisdictions, documents, llm, dashboard
+    agencies, alerts, assistant, auth, banks, graph, regulations, 
+    updates, jurisdictions, documents, llm, dashboard, training
 )
 from .llm.openai_config import validate_api_key
+from .regulatory_monitor.monitor import regulatory_monitor
 
 # Load environment variables
 load_dotenv()
@@ -69,6 +70,7 @@ app.include_router(jurisdictions.router, prefix="/api/jurisdictions", tags=["Jur
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(llm.router, prefix="/api/llm", tags=["LLM Integration"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(training.router, prefix="/api/training", tags=["Training Compliance"])
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -96,6 +98,25 @@ async def general_exception_handler(request, exc):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
     )
+
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """Start the regulatory monitoring system."""
+    try:
+        regulatory_monitor.start_monitoring()
+        logger.info("Regulatory monitoring system started")
+    except Exception as e:
+        logger.error(f"Error starting regulatory monitoring: {str(e)}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop the regulatory monitoring system."""
+    try:
+        regulatory_monitor.stop_monitoring()
+        logger.info("Regulatory monitoring system stopped")
+    except Exception as e:
+        logger.error(f"Error stopping regulatory monitoring: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Settings, Upload, Database, RefreshCw, Bell, Shield } from 'lucide-react';
+import { Settings, Upload, Database, RefreshCw, Bell, Shield, FileSpreadsheet } from 'lucide-react';
 import DocumentUpload from '../components/Settings/DocumentUpload';
+import TrainingCompliance from '../components/Settings/TrainingCompliance';
 
 const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'knowledge' | 'training' | 'notifications' | 'security' | 'general'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'knowledge' | 'training' | 'notifications' | 'security' | 'general' | 'training-compliance'>('upload');
   
   return (
     <div className="space-y-6">
@@ -23,6 +24,19 @@ const SettingsPage: React.FC = () => {
           <div className="flex items-center">
             <Upload size={18} className="mr-2" />
             Upload Documents
+          </div>
+        </button>
+        <button
+          className={`px-4 py-2 font-medium ${
+            activeTab === 'training-compliance' 
+              ? 'text-primary border-b-2 border-primary' 
+              : 'text-neutral-light hover:text-neutral'
+          }`}
+          onClick={() => setActiveTab('training-compliance')}
+        >
+          <div className="flex items-center">
+            <FileSpreadsheet size={18} className="mr-2" />
+            Training Compliance
           </div>
         </button>
         <button
@@ -92,10 +106,8 @@ const SettingsPage: React.FC = () => {
         </button>
       </div>
       
-      {activeTab === 'upload' && (
-        <DocumentUpload />
-      )}
-      
+      {activeTab === 'upload' && <DocumentUpload />}
+      {activeTab === 'training-compliance' && <TrainingCompliance />}
       {activeTab === 'knowledge' && (
         <div className="card">
           <div className="flex items-center mb-6">

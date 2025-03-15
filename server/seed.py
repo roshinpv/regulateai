@@ -9,7 +9,6 @@ from .database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
-
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
     if isinstance(password, str):
@@ -17,7 +16,6 @@ def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password, salt)
     return hashed.decode('utf-8')
-
 
 def seed_database():
     """
@@ -29,9 +27,9 @@ def seed_database():
         if db.query(models.User).count() > 0:
             logger.info("Database already seeded. Skipping.")
             return
-
+        
         logger.info("Seeding database with Wells Fargo focused data...")
-
+        
         # Create admin user with properly hashed password
         admin_user = models.User(
             username="admin",
@@ -40,7 +38,7 @@ def seed_database():
             is_admin=True
         )
         db.add(admin_user)
-
+        
         # Create regular user with properly hashed password
         regular_user = models.User(
             username="user",
@@ -49,9 +47,9 @@ def seed_database():
             is_admin=False
         )
         db.add(regular_user)
-
+        
         db.commit()
-
+        
         # Create jurisdictions
         us_jurisdiction = models.Jurisdiction(
             name="United States",
@@ -59,11 +57,11 @@ def seed_database():
             type=models.JurisdictionType.NATIONAL
         )
         db.add(us_jurisdiction)
-
+        
         db.commit()
-
+        
         # Create agencies
-        ''' agencies = [
+        agencies = [
             models.Agency(
                 name="FDIC",
                 description="Federal Deposit Insurance Corporation - Insures deposits and examines/supervises financial institutions.",
@@ -89,18 +87,18 @@ def seed_database():
                 website="https://www.consumerfinance.gov/"
             )
         ]
-
+        
         for agency in agencies:
             db.add(agency)
-
+        
         db.commit()
-
+        
         # Get agency references
         fdic = db.query(models.Agency).filter(models.Agency.name == "FDIC").first()
         occ = db.query(models.Agency).filter(models.Agency.name == "OCC").first()
         fincen = db.query(models.Agency).filter(models.Agency.name == "FinCEN").first()
         cfpb = db.query(models.Agency).filter(models.Agency.name == "CFPB").first()
- '''
+        
         # Create Wells Fargo
         wells_fargo = models.Bank(
             id="bank-001",  # Fixed ID for consistency
@@ -110,7 +108,6 @@ def seed_database():
         )
         db.add(wells_fargo)
         db.commit()
-
 
         # Create risk assessment units
         risk_units = {
@@ -259,9 +256,9 @@ def seed_database():
         for unit in risk_units.values():
             db.add(unit)
         db.commit()
-
+        
         # Create regulations with unit mappings
-        ''' c = [
+        regulations = [
             {
                 'regulation': models.Regulation(
                     title="Basel III",
@@ -377,15 +374,15 @@ def seed_database():
                 ]
             }
         ]
-
+        
         for reg_data in regulations:
             regulation = reg_data['regulation']
             categories = reg_data['categories']
             units = reg_data['units']
-
+            
             db.add(regulation)
             wells_fargo.affected_regulations.append(regulation)
-
+            
             # Add categories
             for category in categories:
                 cat_assoc = models.RegulationCategoryAssociation(
@@ -393,22 +390,21 @@ def seed_database():
                     category=category
                 )
                 regulation.categories.append(cat_assoc)
-
+            
             # Add units
             for unit in units:
                 regulation.responsible_units.append(unit)
-
-        db.commit()'''
-
+        
+        db.commit()
+        
         logger.info("Database seeded successfully with Wells Fargo focused data.")
-
+        
     except Exception as e:
         logger.error(f"Error seeding database: {str(e)}")
         db.rollback()
         raise
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     seed_database()

@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const decoded = jwtDecode<JWTPayload>(token);
           const currentTime = Date.now() / 1000;
-
+          
           if (decoded.exp < currentTime) {
             console.log('Token expired during interval check');
             logout();
@@ -112,15 +112,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
       const data = await authAPI.login(username, password);
       localStorage.setItem('token', data.access_token);
       setToken(data.access_token);
-
+      
       // Decode token to get expiry and username
       const decoded = jwtDecode<JWTPayload>(data.access_token);
-
+      
       // Set user data
       setUser({
         id: 'user-001',
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
       await authAPI.register({ username, email, password });
       // After registration, log the user in

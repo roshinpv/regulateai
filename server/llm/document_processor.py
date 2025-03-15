@@ -8,25 +8,25 @@ import re
 
 from .embeddings import embedding_manager
 from .vectorstore import vectorstore_manager
-from .openai_client import openai_client
+from .graph_rag import graph_rag
+from .llm_provider import llm_provider
 
 logger = logging.getLogger(__name__)
 
-
 class DocumentProcessor:
     """Process documents and add them to the vector store."""
-
+    
     def __init__(self):
         self.embedding_manager = embedding_manager
         self.vectorstore_manager = vectorstore_manager
-
+    
     def _filter_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """
         Filter metadata to only include simple types supported by the vector store.
-
+        
         Args:
             metadata: Original metadata dictionary
-
+            
         Returns:
             Dict containing only simple type values (str, int, float, bool)
         """
@@ -36,25 +36,25 @@ class DocumentProcessor:
             if value is not None and isinstance(value, (str, int, float, bool)):
                 filtered[key] = value
         return filtered
-
+    
     async def process_document(
-            self,
-            document_id: str,
-            file_path: Optional[str] = None,
-            url: Optional[str] = None,
-            content: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None
+        self, 
+        document_id: str, 
+        file_path: Optional[str] = None, 
+        url: Optional[str] = None, 
+        content: Optional[str] = None, 
+        metadata: Optional[Dict[str, Any]] = None
     ) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
         Process a document and add it to the vector store.
-
+        
         Args:
             document_id: Unique identifier for the document
             file_path: Path to the document file (optional)
             url: URL of the document (optional)
             content: Document content as text (optional)
             metadata: Additional metadata for the document
-
+            
         Returns:
             Tuple containing:
                 - bool: True if processing was successful
@@ -73,32 +73,40 @@ class DocumentProcessor:
             else:
                 logger.error(f"No content source provided for document {document_id}")
                 return False, None
-
+            
             if not text:
                 logger.error(f"Failed to extract text from document {document_id}")
                 return False, None
-
-            # Process text with LLM to extract structured data
-            llm_response = await self._process_text_with_llm(text)
-
-            # Split text into chunks
+            
+            # Process with Graph RAG
+            rag_results = graph_rag.process_document(text, metadata)
+            
+            if not rag_results:
+                logger.error(f"Graph RAG processing failed for document {document_id}")
+                return False, None
+            
+            # Split text into chunks for vector store
             text_splitter = self.embedding_manager.get_text_splitter()
             chunks = text_splitter.split_text(text)
-
+            
             if not chunks:
                 logger.error(f"No text chunks extracted from document {document_id}")
                 return False, None
-
+            
             # Prepare metadata for each chunk
             if not metadata:
                 metadata = {}
-
+            
             # Filter metadata to only include simple types
             base_metadata = self._filter_metadata(metadata)
-
+            base_metadata.update({
+                "rag_analysis": rag_results.get("analysis", ""),
+                "processed_at": rag_results.get("timestamp", "")
+            })
+            
             chunk_metadatas = []
             chunk_ids = []
-
+            
             for i, chunk in enumerate(chunks):
                 chunk_id = f"{document_id}-chunk-{i}"
                 chunk_metadata = base_metadata.copy()
@@ -110,28 +118,29 @@ class DocumentProcessor:
                 })
                 chunk_ids.append(chunk_id)
                 chunk_metadatas.append(chunk_metadata)
-
+            
             # Add chunks to vector store
             self.vectorstore_manager.add_texts(
                 texts=chunks,
                 metadatas=chunk_metadatas,
                 ids=chunk_ids
             )
-
-
-
+            
+            # Process text with configured LLM provider
+            llm_response = await llm_provider.analyze_document(text)
+            
             logger.info(f"Successfully processed document {document_id} with {len(chunks)} chunks")
             return True, llm_response
-
+            
         except Exception as e:
             logger.error(f"Error processing document {document_id}: {str(e)}")
             return False, None
-
+    
     def _extract_text_from_file(self, file_path: str) -> str:
         """Extract text from a file based on its extension."""
         try:
             file_extension = os.path.splitext(file_path)[1].lower()
-
+            
             if file_extension == '.pdf':
                 return self._extract_text_from_pdf(file_path)
             elif file_extension in ['.docx', '.doc']:
@@ -141,11 +150,11 @@ class DocumentProcessor:
             else:
                 logger.warning(f"Unsupported file extension: {file_extension}")
                 return ""
-
+                
         except Exception as e:
             logger.error(f"Error extracting text from file {file_path}: {str(e)}")
             return ""
-
+    
     def _extract_text_from_pdf(self, file_path: str) -> str:
         """Extract text from a PDF file."""
         try:
@@ -158,7 +167,7 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error extracting text from PDF {file_path}: {str(e)}")
             return ""
-
+    
     def _extract_text_from_docx(self, file_path: str) -> str:
         """Extract text from a DOCX file."""
         try:
@@ -166,7 +175,7 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error extracting text from DOCX {file_path}: {str(e)}")
             return ""
-
+    
     def _extract_text_from_txt(self, file_path: str) -> str:
         """Extract text from a TXT file."""
         try:
@@ -183,43 +192,7 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error extracting text from TXT {file_path}: {str(e)}")
             return ""
-
-    async def _process_text_with_llm(self, text: str) -> Optional[Dict[str, Any]]:
-        """
-        Process text with LLM to extract structured data.
-
-        Uses OpenAI to analyze the document and extract regulatory information
-        in a structured format.
-
-        Args:
-            text: Document text to analyze
-
-        Returns:
-            Dict containing structured data in the format:
-            {
-                "regulations": [...],
-                "agencies": [...],
-                "jurisdictions": [...],
-                "compliance_steps": [...],
-                "risk_compliance_mapping": [...],
-                "related_regulations": [...]
-            }
-        """
-        try:
-            # Use OpenAI client to analyze document
-            llm_response = await openai_client.analyze_document(text)
-
-            if llm_response:
-                logger.info("Successfully extracted regulatory information using OpenAI")
-                return llm_response
-            else:
-                logger.warning("OpenAI analysis returned no results")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error processing text with LLM: {str(e)}")
-            return None
-
+    
     def delete_document(self, document_id: str) -> bool:
         """Delete a document and its chunks from the vector store."""
         try:
@@ -229,7 +202,6 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error deleting document {document_id}: {str(e)}")
             return False
-
 
 # Singleton instance
 document_processor = DocumentProcessor()

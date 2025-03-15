@@ -154,7 +154,7 @@ export interface RegulationCategory {
   category: RegulationCategoryType;
 }
 
-export type RegulationCategoryType =
+export type RegulationCategoryType = 
   | 'Risk Management'
   | 'Capital & Liquidity'
   | 'Consumer Protection'

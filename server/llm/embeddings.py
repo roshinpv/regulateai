@@ -34,7 +34,7 @@ class EmbeddingManager:
             # Initialize HuggingFace embeddings
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=self.embedding_model_name,
-                model_kwargs={'device': 'cuda' if self._is_cuda_available() else 'mps'},
+                model_kwargs={'device': 'cuda' if self._is_cuda_available() else 'cpu'},
                 encode_kwargs={'normalize_embeddings': True}
             )
             
