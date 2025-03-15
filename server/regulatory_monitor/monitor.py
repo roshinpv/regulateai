@@ -10,6 +10,7 @@ from .collectors.base import UpdateCollector
 from .collectors.rss import RSSCollector
 from .collectors.api import APICollector
 from .collectors.web import WebCollector
+from .alert_manager import alert_manager
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,11 @@ class RegulatoryMonitor:
                 for collector in collectors:
                     try:
                         updates = await collector.collect_updates()
+                        
+                        # Add collector type to updates
+                        for update in updates:
+                            update["collector_type"] = collector.__class__.__name__
+                        
                         agency_updates.extend(updates)
                     except Exception as e:
                         logger.error(
@@ -132,14 +138,20 @@ class RegulatoryMonitor:
             # Process each agency's updates
             for agency_id, agency_updates in updates_by_agency.items():
                 try:
-                    # Save updates to database
-                    await self._save_updates(agency_updates)
+                    # Generate alerts for updates
+                    alert_ids = []
+                    for update in agency_updates:
+                        alert_id = await alert_manager.process_update(update)
+                        if alert_id:
+                            alert_ids.append(alert_id)
                     
-                    # Analyze updates for impact
-                    await self._analyze_updates(agency_updates)
+                    if alert_ids:
+                        logger.info(
+                            f"Generated {len(alert_ids)} alerts for {agency_id}"
+                        )
                     
-                    # Generate notifications
-                    await self._generate_notifications(agency_updates)
+                    # Process alerts
+                    await self._process_alerts()
                     
                 except Exception as e:
                     logger.error(
@@ -149,19 +161,54 @@ class RegulatoryMonitor:
         except Exception as e:
             logger.error(f"Error processing updates: {str(e)}")
     
-    async def _save_updates(self, updates: List[Dict[str, Any]]):
-        """Save regulatory updates to database."""
-        # This would be implemented to save to your database
+    async def _process_alerts(self):
+        """Process pending alerts."""
+        try:
+            # Get pending alerts
+            alerts = await alert_manager.get_pending_alerts()
+            
+            if not alerts:
+                return
+            
+            logger.info(f"Processing {len(alerts)} pending alerts")
+            
+            for alert in alerts:
+                try:
+                    # Analyze alert impact
+                    analysis = await self._analyze_alert(alert)
+                    
+                    if analysis:
+                        # Update alert with analysis
+                        await alert_manager.update_alert_status(
+                            alert["id"],
+                            "Analyzed",
+                            {"analysis": analysis}
+                        )
+                        
+                        # Generate notification if high priority
+                        if alert["priority"] == "High":
+                            await self._generate_notification(alert)
+                            
+                            # Update alert status
+                            await alert_manager.update_alert_status(
+                                alert["id"],
+                                "Notified"
+                            )
+                    
+                except Exception as e:
+                    logger.error(f"Error processing alert {alert['id']}: {str(e)}")
+            
+        except Exception as e:
+            logger.error(f"Error processing alerts: {str(e)}")
+    
+    async def _analyze_alert(self, alert: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Analyze alert for impact assessment."""
+        # This would be implemented to analyze alert impact
         pass
     
-    async def _analyze_updates(self, updates: List[Dict[str, Any]]):
-        """Analyze updates for regulatory impact."""
-        # This would be implemented to analyze updates
-        pass
-    
-    async def _generate_notifications(self, updates: List[Dict[str, Any]]):
-        """Generate notifications for relevant updates."""
-        # This would be implemented to generate notifications
+    async def _generate_notification(self, alert: Dict[str, Any]):
+        """Generate notification for alert."""
+        # This would be implemented to send notifications
         pass
 
 # Singleton instance
