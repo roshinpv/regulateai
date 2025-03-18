@@ -76,13 +76,24 @@ const ImpactAnalysis: React.FC = () => {
         return 'bg-neutral-lighter text-neutral';
     }
   };
-  
+
+  const getUnitDistribution = (units: any[] = []) => {
+    // Create distribution object with category counts
+    const distribution = units.reduce((acc: Record<string, number>, unit) => {
+      const category = unit.category;
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+
+    return distribution;
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1">
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Affected Regulations</h2>
-          
+
           {isLoadingList ? (
             <div className="py-8 text-center text-neutral-light">
               Loading regulations...
@@ -119,7 +130,7 @@ const ImpactAnalysis: React.FC = () => {
           )}
         </div>
       </div>
-      
+
       <div className="lg:col-span-2">
         {isLoading ? (
           <div className="card flex items-center justify-center h-64">
@@ -138,12 +149,12 @@ const ImpactAnalysis: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-2">Summary</h3>
               <p className="text-neutral-light">{regulation.summary}</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-neutral-lighter rounded-lg p-4">
                 <h4 className="font-medium mb-2">Risk Level</h4>
@@ -157,23 +168,23 @@ const ImpactAnalysis: React.FC = () => {
                   Based on institutional exposure
                 </p>
               </div>
-              
+
               <div className="bg-neutral-lighter rounded-lg p-4">
                 <h4 className="font-medium mb-2">Compliance Deadline</h4>
                 <div className="text-lg font-bold">
-                  {regulation.compliance_deadline ? 
+                  {regulation.compliance_deadline ?
                     new Date(regulation.compliance_deadline).toLocaleDateString() :
                     'Not specified'
                   }
                 </div>
                 <p className="text-xs text-neutral-light mt-1">
-                  {regulation.compliance_deadline ? 
+                  {regulation.compliance_deadline ?
                     `${Math.ceil((new Date(regulation.compliance_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining` :
                     'No deadline set'
                   }
                 </p>
               </div>
-              
+
               <div className="bg-neutral-lighter rounded-lg p-4">
                 <h4 className="font-medium mb-2">Readiness Score</h4>
                 <div className="text-lg font-bold text-green-600">
@@ -210,12 +221,7 @@ const ImpactAnalysis: React.FC = () => {
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-3">Unit Distribution</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(
-                  regulation.responsible_units?.reduce((acc, unit) => {
-                    acc[unit.category] = (acc[unit.category] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>) || {}
-                ).map(([category, count]) => (
+                {Object.entries(getUnitDistribution(regulation.responsible_units)).map(([category, count]) => (
                   <div key={category} className={`rounded-lg p-4 text-center ${getCategoryColor(category)}`}>
                     <div className="text-2xl font-bold">{count}</div>
                     <div className="text-sm">{category}</div>

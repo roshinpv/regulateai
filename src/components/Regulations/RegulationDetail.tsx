@@ -47,12 +47,40 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Application':
+        return 'bg-blue-100 text-blue-600';
+      case 'Infrastructure':
+        return 'bg-green-100 text-green-600';
+      case 'Security':
+        return 'bg-red-100 text-red-600';
+      case 'Governance':
+        return 'bg-purple-100 text-purple-600';
+      case 'Operations':
+        return 'bg-orange-100 text-orange-600';
+      default:
+        return 'bg-neutral-lighter text-neutral';
+    }
+  };
+
+  const getUnitDistribution = (units: any[] = []) => {
+    // Create distribution object with category counts
+    const distribution = units.reduce((acc: Record<string, number>, unit) => {
+      const category = unit.category;
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+
+    return distribution;
+  };
+
   if (isLoading) {
     return (
       <div className="card">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Loading...</h2>
-          <button 
+          <button
             className="text-neutral-light hover:text-neutral"
             onClick={onClose}
           >
@@ -69,7 +97,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
       <div className="card">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Error</h2>
-          <button 
+          <button
             className="text-neutral-light hover:text-neutral"
             onClick={onClose}
           >
@@ -85,7 +113,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
     <div className="card">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">{regulation.title}</h2>
-        <button 
+        <button
           className="text-neutral-light hover:text-neutral"
           onClick={onClose}
         >
@@ -115,7 +143,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
           Risk Assessment Units
         </button>
       </div>
-      
+
       {activeTab === 'overview' ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -128,7 +156,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
                 <p className="font-medium">{new Date(regulation.last_updated).toLocaleDateString()}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center">
               <div className="p-2 rounded-full bg-neutral-lighter mr-3">
                 <Users size={16} className="text-neutral" />
@@ -138,14 +166,14 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
                 <p className="font-medium">{regulation.agency?.name || 'Unknown'}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center">
               <div className={`p-2 rounded-full mr-3 ${
                 regulation.impact_level === 'High' ? 'bg-primary/10' : 
                 regulation.impact_level === 'Medium' ? 'bg-secondary/20' : 'bg-neutral-lighter'
               }`}>
                 <CheckSquare size={16} className={
-                  regulation.impact_level === 'High' ? 'text-primary' : 
+                  regulation.impact_level === 'High' ? 'text-primary' :
                   regulation.impact_level === 'Medium' ? 'text-secondary-dark' : 'text-neutral-light'
                 } />
               </div>
@@ -155,12 +183,12 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
               </div>
             </div>
           </div>
-          
+
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-2">Summary</h3>
             <p className="text-neutral-light">{regulation.summary}</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-lg font-medium mb-3">Affected Banks</h3>
@@ -177,7 +205,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
                 <p className="text-neutral-light">No affected banks specified</p>
               )}
             </div>
-            
+
             <div>
               <h3 className="text-lg font-medium mb-3">Compliance Steps</h3>
               {regulation.compliance_steps && regulation.compliance_steps.length > 0 ? (
@@ -206,7 +234,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
             <p className="text-neutral-light mb-4">
               The following units are responsible for implementing and maintaining compliance with this regulation:
             </p>
-            
+
             {regulation.responsible_units && regulation.responsible_units.length > 0 ? (
               <div className="space-y-4">
                 {regulation.responsible_units.map((unit) => (
@@ -217,7 +245,7 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
                         <h4 className="font-medium">{unit.name}</h4>
                         <p className="text-sm text-neutral-light mt-1">{unit.description}</p>
                         <div className="flex items-center mt-2">
-                          <span className="text-xs bg-neutral-lighter text-neutral-light px-2 py-1 rounded-full">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(unit.category)}`}>
                             {unit.category}
                           </span>
                         </div>
@@ -230,17 +258,14 @@ const RegulationDetail: React.FC<RegulationDetailProps> = ({ regulationId, onClo
               <p className="text-neutral-light">No responsible units specified</p>
             )}
           </div>
-          
+
           <div className="border-t border-neutral-lighter pt-6">
             <h3 className="text-lg font-medium mb-3">Unit Distribution</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {Object.values(regulation.responsible_units?.reduce((acc, unit) => {
-                acc[unit.category] = (acc[unit.category] || 0) + 1;
-                return acc;
-              }, {} as Record<string, number>) || {}).map((count, category) => (
-                <div key={category} className="bg-neutral-lighter rounded-lg p-4 text-center">
+              {Object.entries(getUnitDistribution(regulation.responsible_units)).map(([category, count]) => (
+                <div key={category} className={`rounded-lg p-4 text-center ${getCategoryColor(category)}`}>
                   <div className="text-2xl font-bold">{count}</div>
-                  <div className="text-sm text-neutral-light">{category}</div>
+                  <div className="text-sm">{category}</div>
                 </div>
               ))}
             </div>

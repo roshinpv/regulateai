@@ -2,6 +2,7 @@ import React from 'react';
 import StatCards from '../components/Dashboard/StatCards';
 import LatestUpdates from '../components/Dashboard/LatestUpdates';
 import ComplianceAlertsList from '../components/Dashboard/ComplianceAlertsList';
+import MonitoringStatus from '../components/Dashboard/MonitoringStatus';
 import GraphVisualization from '../components/Graph/GraphVisualization';
 import { useNavigate } from 'react-router-dom';
 import { graphAPI } from '../api';
@@ -41,8 +42,10 @@ const Dashboard: React.FC = () => {
           <button className="btn btn-primary">Generate Compliance Report</button>
         </div>
       </div>
-      
+
       <StatCards />
+
+      <MonitoringStatus />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LatestUpdates />

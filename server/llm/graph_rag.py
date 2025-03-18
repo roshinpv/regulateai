@@ -88,13 +88,15 @@ class GraphRAG:
             # Calculate centrality measures
             pagerank = nx.pagerank(self.graph)
             betweenness = nx.betweenness_centrality(self.graph)
+            eigenvector = nx.eigenvector_centrality(self.graph)
             
-            # Combine centrality scores
+            # Combine centrality scores with weights
             combined_scores = {}
             for node in self.graph.nodes():
                 combined_scores[node] = (
-                    pagerank.get(node, 0) * 0.7 +  # Weight pagerank more heavily
-                    betweenness.get(node, 0) * 0.3
+                    pagerank.get(node, 0) * 0.4 +  # PageRank for overall importance
+                    betweenness.get(node, 0) * 0.3 +  # Betweenness for bridging concepts
+                    eigenvector.get(node, 0) * 0.3  # Eigenvector for influence
                 )
             
             # Get top chunks based on combined score
@@ -110,7 +112,21 @@ class GraphRAG:
                 for node, _ in top_nodes
             ]
             
-            return key_chunks
+            # Add context from neighboring chunks
+            context_chunks = set(key_chunks)
+            for node, _ in top_nodes:
+                # Get immediate neighbors
+                neighbors = list(self.graph.neighbors(node))
+                # Sort neighbors by edge weight
+                neighbors.sort(
+                    key=lambda n: self.graph[node][n]["weight"],
+                    reverse=True
+                )
+                # Add top neighbor chunks
+                for neighbor in neighbors[:2]:  # Add 2 best neighbors
+                    context_chunks.add(self.graph.nodes[neighbor]["text"])
+            
+            return list(context_chunks)
             
         except Exception as e:
             logger.error(f"Error extracting key chunks: {str(e)}")
@@ -141,10 +157,16 @@ Extract and organize the information into a structured format including:
 4. Key dates and deadlines
 5. Related regulations and relationships
 6. Risk assessment areas
+7. Impact assessment
+8. Required actions
 
 Provide the analysis in a clear, structured format."""
 
             response = llm_provider.generate_response(prompt)
+            
+            # Extract entities and relationships
+            entities = self._extract_entities(chunks)
+            relationships = self._extract_relationships(chunks)
             
             # Store analysis in vector store for future retrieval
             self.vectorstore_manager.add_texts(
@@ -152,6 +174,8 @@ Provide the analysis in a clear, structured format."""
                 metadatas=[{
                     "type": "analysis",
                     "timestamp": datetime.utcnow().isoformat(),
+                    "entities": entities,
+                    "relationships": relationships,
                     **(metadata or {})
                 }]
             )
@@ -159,6 +183,8 @@ Provide the analysis in a clear, structured format."""
             return {
                 "analysis": response,
                 "key_excerpts": chunks,
+                "entities": entities,
+                "relationships": relationships,
                 "metadata": metadata
             }
             
@@ -167,8 +193,65 @@ Provide the analysis in a clear, structured format."""
             return {
                 "analysis": "Error analyzing document",
                 "key_excerpts": chunks,
+                "entities": [],
+                "relationships": [],
                 "metadata": metadata
             }
+    
+    def _extract_entities(self, chunks: List[str]) -> List[Dict[str, Any]]:
+        """Extract regulatory entities from chunks."""
+        entities = []
+        try:
+            # Use LLM to identify entities
+            prompt = f"""Extract regulatory entities from the following text excerpts:
+
+{' '.join(chunks)}
+
+Identify and categorize entities including:
+- Regulations
+- Agencies
+- Requirements
+- Deadlines
+- Risk Areas
+
+Return the entities in a structured format."""
+
+            response = llm_provider.generate_response(prompt)
+            
+            # Parse response and extract entities
+            # This would be implemented based on the LLM response format
+            
+            return entities
+        except Exception as e:
+            logger.error(f"Error extracting entities: {str(e)}")
+            return entities
+    
+    def _extract_relationships(self, chunks: List[str]) -> List[Dict[str, Any]]:
+        """Extract relationships between regulatory entities."""
+        relationships = []
+        try:
+            # Use LLM to identify relationships
+            prompt = f"""Extract relationships between regulatory entities from the following text excerpts:
+
+{' '.join(chunks)}
+
+Identify relationships such as:
+- Dependencies between regulations
+- Agency oversight responsibilities
+- Compliance requirement connections
+- Risk area associations
+
+Return the relationships in a structured format."""
+
+            response = llm_provider.generate_response(prompt)
+            
+            # Parse response and extract relationships
+            # This would be implemented based on the LLM response format
+            
+            return relationships
+        except Exception as e:
+            logger.error(f"Error extracting relationships: {str(e)}")
+            return relationships
     
     def query(self, question: str, context_size: int = 3) -> Dict[str, Any]:
         """
@@ -224,7 +307,7 @@ Question: {question}
 
 Provide a clear, accurate answer based on the context. If the context doesn't contain relevant information, say so."""
 
-            answer = llm_provider.generate_response(prompt, context)
+            answer = llm_provider.generate_response(prompt)
             
             return {
                 "answer": answer,
