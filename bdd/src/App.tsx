@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { FileJson, Upload, Play, Download, ChevronDown, ChevronUp, AlertTriangle, Clock, BarChart3, Activity } from 'lucide-react';
+import { FileJson, Upload, Play, Download, ChevronDown, ChevronUp, AlertTriangle, Clock, BarChart3, Activity, PlayCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { parse } from 'yaml';
 import { Toaster, toast } from 'react-hot-toast';
-import type { OpenAPISpec, EndpointConfig } from './types';
-import { parseOpenAPI, generateTests, setupWiremock } from './api/client';
+import Editor from '@monaco-editor/react';
+import type { OpenAPISpec, EndpointConfig, TestResult } from './types';
+import { parseOpenAPI, generateTests, setupWiremock, executeTests } from './api/client';
 
 function App() {
   const [spec, setSpec] = useState<OpenAPISpec | null>(null);
@@ -12,6 +13,10 @@ function App() {
   const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
+  const [testScript, setTestScript] = useState<string>('');
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [showEditor, setShowEditor] = useState<boolean>(false);
 
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -85,28 +90,41 @@ function App() {
 
       const { testCases } = await generateTests(selectedEndpoints, spec);
       
-      // Create a blob with the test cases
-      const blob = new Blob([JSON.stringify(testCases, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary link and trigger download
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'karate-tests.json';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success('Test cases generated successfully');
-      
       // Setup WireMock stubs
       await setupWiremock(selectedEndpoints, spec);
       toast.success('WireMock stubs created successfully');
+
+      // Format test cases as a string and set to editor
+      const formattedTests = Object.entries(testCases)
+        .map(([path, testCase]) => testCase)
+        .join('\n\n');
+      
+      setTestScript(formattedTests);
+      setShowEditor(true);
+      toast.success('Test cases generated successfully');
     } catch (error) {
       console.error('Failed to generate tests:', error);
       toast.error('Failed to generate test cases. Please try again.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleExecuteTests = async () => {
+    setIsExecuting(true);
+    try {
+      const results = await executeTests(testScript);
+      setTestResults(results);
+      
+      const passedTests = results.filter(r => r.passed).length;
+      const totalTests = results.length;
+      
+      toast.success(`Tests executed: ${passedTests}/${totalTests} passed`);
+    } catch (error) {
+      console.error('Failed to execute tests:', error);
+      toast.error('Failed to execute test cases. Please check the WireMock setup.');
+    } finally {
+      setIsExecuting(false);
     }
   };
 
@@ -313,6 +331,71 @@ function App() {
                 <span>Export Tests</span>
               </button>
             </div>
+
+            {/* Test Editor and Results */}
+            {showEditor && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-neutral">Test Scripts</h2>
+                    <button
+                      onClick={handleExecuteTests}
+                      disabled={isExecuting || !testScript}
+                      className="wf-button-primary"
+                    >
+                      <PlayCircle className={`h-4 w-4 ${isExecuting ? 'animate-pulse' : ''}`} />
+                      <span>{isExecuting ? 'Executing...' : 'Execute Tests'}</span>
+                    </button>
+                  </div>
+                  <div className="h-[500px] border border-neutral-lighter rounded-lg overflow-hidden">
+                    <Editor
+                      height="100%"
+                      defaultLanguage="gherkin"
+                      value={testScript}
+                      onChange={(value) => setTestScript(value || '')}
+                      theme="vs-light"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: 'on',
+                        readOnly: isExecuting,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {testResults.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <h2 className="text-xl font-semibold text-neutral mb-4">Test Results</h2>
+                    <div className="space-y-4">
+                      {testResults.map((result, index) => (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg border ${
+                            result.passed ? 'border-success bg-success/5' : 'border-danger bg-danger/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`font-medium ${result.passed ? 'text-success' : 'text-danger'}`}>
+                              Test #{index + 1}: {result.passed ? 'Passed' : 'Failed'}
+                            </span>
+                            <span className="text-sm text-neutral-light">
+                              Duration: {result.duration}ms
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-neutral">{result.message}</p>
+                          {result.details && (
+                            <pre className="mt-2 p-2 bg-neutral-50 rounded text-xs overflow-x-auto">
+                              {result.details}
+                            </pre>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -37,4 +37,11 @@ export const setupWiremock = async (endpoints: Record<string, any>, openApiSpec:
   return response.data;
 };
 
+export const executeTests = async (testScript: string) => {
+  const response = await apiClient.post('/execute-tests', {
+    testScript,
+  });
+  return response.data;
+};
+
 export default apiClient;

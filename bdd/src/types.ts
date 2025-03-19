@@ -26,3 +26,10 @@ export interface TestCase {
   scenario: string;
   steps: string[];
 }
+
+export interface TestResult {
+  passed: boolean;
+  message: string;
+  duration: number;
+  details?: string;
+}
