@@ -2,42 +2,42 @@ import React, { useState } from 'react';
 import { FileJson, Upload, Play, Download, ChevronDown, ChevronUp, AlertTriangle, Clock, BarChart3, Activity } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { parse } from 'yaml';
+import { Toaster, toast } from 'react-hot-toast';
 import type { OpenAPISpec, EndpointConfig } from './types';
+import { parseOpenAPI, generateTests, setupWiremock } from './api/client';
 
 function App() {
   const [spec, setSpec] = useState<OpenAPISpec | null>(null);
   const [endpointConfigs, setEndpointConfigs] = useState<Record<string, EndpointConfig>>({});
   const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
-  const onDrop = (acceptedFiles: File[]) => {
+  const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    const reader = new FileReader();
+    setIsLoading(true);
 
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsed = file.name.endsWith('.yaml') || file.name.endsWith('.yml')
-          ? parse(content)
-          : JSON.parse(content);
-        setSpec(parsed);
-        
-        const initialConfigs: Record<string, EndpointConfig> = {};
-        Object.keys(parsed.paths).forEach(path => {
-          initialConfigs[path] = {
-            jiraStory: '',
-            requestData: '',
-            responseData: '',
-            selected: false
-          };
-        });
-        setEndpointConfigs(initialConfigs);
-      } catch (error) {
-        console.error('Failed to parse OpenAPI spec:', error);
-        alert('Failed to parse the OpenAPI specification. Please check the file format.');
-      }
-    };
-
-    reader.readAsText(file);
+    try {
+      const { spec: parsedSpec } = await parseOpenAPI(file);
+      setSpec(parsedSpec);
+      
+      const initialConfigs: Record<string, EndpointConfig> = {};
+      Object.keys(parsedSpec.paths).forEach(path => {
+        initialConfigs[path] = {
+          jiraStory: '',
+          requestData: '',
+          responseData: '',
+          selected: false
+        };
+      });
+      setEndpointConfigs(initialConfigs);
+      toast.success('OpenAPI specification loaded successfully');
+    } catch (error) {
+      console.error('Failed to parse OpenAPI spec:', error);
+      toast.error('Failed to parse the OpenAPI specification. Please check the file format.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -73,6 +73,43 @@ function App() {
     setExpandedEndpoint(expandedEndpoint === path ? null : path);
   };
 
+  const handleGenerateTests = async () => {
+    setIsGenerating(true);
+    try {
+      const selectedEndpoints = Object.entries(endpointConfigs)
+        .filter(([_, config]) => config.selected)
+        .reduce((acc, [path, config]) => ({
+          ...acc,
+          [path]: config
+        }), {});
+
+      const { testCases } = await generateTests(selectedEndpoints, spec);
+      
+      // Create a blob with the test cases
+      const blob = new Blob([JSON.stringify(testCases, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'karate-tests.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Test cases generated successfully');
+      
+      // Setup WireMock stubs
+      await setupWiremock(selectedEndpoints, spec);
+      toast.success('WireMock stubs created successfully');
+    } catch (error) {
+      console.error('Failed to generate tests:', error);
+      toast.error('Failed to generate test cases. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const selectedEndpointsCount = Object.values(endpointConfigs).filter(config => config.selected).length;
 
   const DashboardCard = ({ icon: Icon, title, value, subtitle, trend }: any) => (
@@ -97,6 +134,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Toaster position="top-right" />
+      
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -139,12 +178,13 @@ function App() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                  ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-lighter hover:border-primary'}`}
+                  ${isDragActive ? 'border-primary bg-primary/5' : 'border-neutral-lighter hover:border-primary'}
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <input {...getInputProps()} />
-                <Upload className="mx-auto h-12 w-12 text-primary" />
+                <input {...getInputProps()} disabled={isLoading} />
+                <Upload className={`mx-auto h-12 w-12 ${isLoading ? 'text-neutral-light animate-pulse' : 'text-primary'}`} />
                 <p className="mt-4 text-sm text-neutral-light">
-                  Drag & drop your OpenAPI specification file here, or click to select
+                  {isLoading ? 'Processing...' : 'Drag & drop your OpenAPI specification file here, or click to select'}
                 </p>
                 <p className="mt-2 text-xs text-neutral-light">
                   Supports JSON and YAML formats
@@ -258,14 +298,15 @@ function App() {
 
             <div className="flex justify-end space-x-4">
               <button
-                disabled={selectedEndpointsCount === 0}
+                disabled={selectedEndpointsCount === 0 || isGenerating}
                 className="wf-button-primary"
+                onClick={handleGenerateTests}
               >
-                <Play className="h-4 w-4" />
-                <span>Generate Tests</span>
+                <Play className={`h-4 w-4 ${isGenerating ? 'animate-pulse' : ''}`} />
+                <span>{isGenerating ? 'Generating...' : 'Generate Tests'}</span>
               </button>
               <button
-                disabled={selectedEndpointsCount === 0}
+                disabled={selectedEndpointsCount === 0 || isGenerating}
                 className="wf-button-secondary"
               >
                 <Download className="h-4 w-4" />
