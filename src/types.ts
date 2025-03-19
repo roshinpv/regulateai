@@ -86,7 +86,7 @@ export interface RegulatoryUpdate {
 export interface GraphNode {
   id: string;
   label: string;
-  type: 'regulation' | 'agency' | 'bank' | 'jurisdiction';
+  type: 'regulation' | 'agency' | 'bank' | 'jurisdiction' | 'entity';
 }
 
 export interface GraphLink {
@@ -216,4 +216,100 @@ export interface LLMResponse {
     regulation_id: string;
     related_regulation_id: string;
   }[];
+}
+
+// Entity Analysis Types
+export type EntityType = 'Corporation' | 'Non-Profit' | 'Shell Company' | 'Financial Intermediary' | 'Individual' | 'Other';
+
+export type SourceType = 
+  | 'Transaction Data'
+  | 'Public Records'
+  | 'News Articles'
+  | 'Regulatory Filings'
+  | 'Court Records'
+  | 'Sanctions Lists'
+  | 'Corporate Registries'
+  | 'Financial Statements'
+  | 'Other';
+
+export type VerificationStatus = 'Pending' | 'Verified' | 'Disputed' | 'Inconclusive';
+
+export interface Entity {
+  id: string;
+  name: string;
+  type: EntityType;
+  registration_number?: string;
+  jurisdiction?: string;
+  incorporation_date?: string;
+  risk_score?: number;
+  confidence_score?: number;
+  last_analyzed_at?: string;
+  analysis_status: VerificationStatus;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  sources?: EntitySource[];
+  transactions?: EntityTransaction[];
+  relationships?: EntityRelationship[];
+  risk_factors?: EntityRiskFactor[];
+}
+
+export interface EntitySource {
+  id: string;
+  entity_id: string;
+  source_type: SourceType;
+  source_url?: string;
+  source_date?: string;
+  content?: string;
+  reliability_score?: number;
+  verification_status: VerificationStatus;
+  verified_at?: string;
+  verified_by?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface EntityTransaction {
+  id: string;
+  entity_id: string;
+  transaction_date: string;
+  transaction_type: string;
+  amount?: number;
+  currency?: string;
+  counterparty_id?: string;
+  counterparty?: Entity;
+  risk_indicators?: Record<string, any>;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface EntityRelationship {
+  id: string;
+  from_entity_id: string;
+  to_entity_id: string;
+  relationship_type: string;
+  strength_score?: number;
+  evidence?: Record<string, any>;
+  metadata?: Record<string, any>;
+  created_at: string;
+  from_entity?: Entity;
+  to_entity?: Entity;
+}
+
+export interface EntityRiskFactor {
+  id: string;
+  entity_id: string;
+  factor_type: string;
+  factor_value?: string;
+  risk_contribution: number;
+  confidence_score: number;
+  evidence?: Record<string, any>;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface EntitySearchResult {
+  entity: Entity;
+  matched_source?: EntitySource;
+  relevance_score: number;
 }

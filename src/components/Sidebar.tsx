@@ -8,7 +8,8 @@ import {
   MessageSquare, 
   Settings,
   Shield,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,7 +28,7 @@ const Sidebar: React.FC = () => {
         <div className="flex items-center">
           <Shield className="text-primary h-8 w-8" />
           <div className="ml-2">
-            <h1 className="text-xl font-bold">RegulateAI</h1>
+            <h1 className="text-xl font-bold">REGULAIZE</h1>
             <p className="text-xs text-neutral-light">Compliance Platform</p>
           </div>
         </div>
@@ -48,6 +49,21 @@ const Sidebar: React.FC = () => {
             >
               <Home size={18} className="mr-3" />
               <span>Dashboard</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/entities" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-3 rounded-md ${
+                  isActive 
+                    ? 'bg-primary text-white' 
+                    : 'text-neutral hover:bg-neutral-lighter'
+                }`
+              }
+            >
+              <Building2 size={18} className="mr-3" />
+              <span>Entity Analysis</span>
             </NavLink>
           </li>
           <li>

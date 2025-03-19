@@ -21,7 +21,7 @@ EMAIL_TEMPLATE = """
     <h2>Training Compliance Notification</h2>
     <p>Dear {{ manager_name }},</p>
     <p>The following employees under your supervision have pending training requirements:</p>
-
+    
     <table style="border-collapse: collapse; width: 100%; margin-top: 20px;">
         <thead>
             <tr style="background-color: #f3f4f6;">
@@ -45,14 +45,13 @@ EMAIL_TEMPLATE = """
             {% endfor %}
         </tbody>
     </table>
-
+    
     <p style="margin-top: 20px;">Please ensure that these trainings are completed by their respective due dates.</p>
-
+    
     <p style="margin-top: 20px;">Best regards,<br>Compliance Team</p>
 </body>
 </html>
 """
-
 
 async def send_email_notification(manager_email: str, manager_name: str, trainings: List[EmployeeTraining]):
     """Send email notification to manager about employee trainings."""
@@ -69,7 +68,7 @@ async def send_email_notification(manager_email: str, manager_name: str, trainin
             manager_name=manager_name,
             trainings=trainings
         )
-
+        
         msg.attach(MIMEText(html, 'html'))
 
         # Send email
@@ -83,24 +82,23 @@ async def send_email_notification(manager_email: str, manager_name: str, trainin
         print(f"Error sending email to {manager_email}: {str(e)}")
         return False
 
-
 @router.post("/send-notifications")
 async def send_training_notifications(
-        data: Dict[str, List[Dict]],
-        background_tasks: BackgroundTasks,
-        db: Session = Depends(get_db),
-        current_user: Any = Depends(get_current_user)
+    data: Dict[str, List[Dict]],
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
 ):
     """Send notifications to managers about employee trainings."""
     try:
         manager_groups = data.get("managerGroups", {})
         processed_count = 0
-
+        
         for manager_email, trainings in manager_groups.items():
             # Skip if no trainings for this manager
             if not trainings:
                 continue
-
+                
             # Create training records
             for training in trainings:
                 db_training = EmployeeTraining(
@@ -113,13 +111,13 @@ async def send_training_notifications(
                     status=TrainingStatus(training["status"])
                 )
                 db.add(db_training)
-
+            
             # Commit to get IDs
             db.flush()
-
+            
             # Get all trainings for this manager
             manager_trainings = [t for t in trainings if t["managerEmail"] == manager_email]
-
+            
             # Send email in background
             background_tasks.add_task(
                 send_email_notification,
@@ -127,17 +125,17 @@ async def send_training_notifications(
                 manager_trainings[0]["managerName"],
                 manager_trainings
             )
-
+            
             processed_count += len(manager_trainings)
-
+        
         db.commit()
-
+        
         return {
             "success": True,
             "message": f"Successfully processed {processed_count} training records",
             "processed_count": processed_count
         }
-
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -145,45 +143,43 @@ async def send_training_notifications(
             detail=f"Error processing training notifications: {str(e)}"
         )
 
-
 @router.get("/trainings")
 async def get_trainings(
-        skip: int = 0,
-        limit: int = 100,
-        status: TrainingStatus = None,
-        db: Session = Depends(get_db),
-        current_user: Any = Depends(get_current_user)
+    skip: int = 0,
+    limit: int = 100,
+    status: TrainingStatus = None,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
 ):
     """Get all training records with optional filtering."""
     query = db.query(EmployeeTraining)
-
+    
     if status:
         query = query.filter(EmployeeTraining.status == status)
-
+    
     total = query.count()
     trainings = query.offset(skip).limit(limit).all()
-
+    
     return {
         "total": total,
         "trainings": [training.to_dict() for training in trainings]
     }
 
-
 @router.put("/trainings/{training_id}/status")
 async def update_training_status(
-        training_id: str,
-        status: TrainingStatus,
-        db: Session = Depends(get_db),
-        current_user: Any = Depends(get_current_user)
+    training_id: str,
+    status: TrainingStatus,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
 ):
     """Update the status of a training record."""
     training = db.query(EmployeeTraining).filter(EmployeeTraining.id == training_id).first()
     if not training:
         raise HTTPException(status_code=404, detail="Training record not found")
-
+    
     training.status = status
     training.updated_at = datetime.utcnow()
-
+    
     db.commit()
-
+    
     return training.to_dict()

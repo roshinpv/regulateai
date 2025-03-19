@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings
 from typing import Dict, Any, List, Optional
 import os
 
-
 class AgencyConfig(BaseSettings):
     name: str
     update_types: List[str]
@@ -12,11 +11,10 @@ class AgencyConfig(BaseSettings):
     web_scraping_urls: List[str] = []
     api_key: Optional[str] = None
 
-
 class MonitoringConfig(BaseSettings):
     # Database configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./regulatory_compliance.db")
-
+    
     # Agency configurations
     agencies: Dict[str, AgencyConfig] = {
         "OCC": AgencyConfig(
@@ -73,14 +71,13 @@ class MonitoringConfig(BaseSettings):
             api_key=os.getenv("SEC_API_KEY")
         )
     }
-
+    
     # Monitoring settings
     update_interval_minutes: int = int(os.getenv("UPDATE_INTERVAL_MINUTES", "60"))
     max_retries: int = int(os.getenv("MAX_RETRIES", "3"))
     retry_delay_seconds: int = int(os.getenv("RETRY_DELAY_SECONDS", "60"))
-
+    
     class Config:
         env_file = ".env"
-
 
 settings = MonitoringConfig()

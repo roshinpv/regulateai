@@ -42,9 +42,9 @@ const Dashboard: React.FC = () => {
           <button className="btn btn-primary">Generate Compliance Report</button>
         </div>
       </div>
-
+      
       <StatCards />
-
+      
       <MonitoringStatus />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

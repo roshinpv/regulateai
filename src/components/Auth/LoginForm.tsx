@@ -26,7 +26,7 @@ const LoginForm: React.FC = () => {
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-card">
         <div className="flex flex-col items-center mb-6">
           <Shield className="text-primary h-12 w-12 mb-2" />
-          <h1 className="text-2xl font-bold">RegulateAI</h1>
+          <h1 className="text-2xl font-bold">REGULAIZE</h1>
           <p className="text-neutral-light">Regulatory Compliance Platform</p>
         </div>
         

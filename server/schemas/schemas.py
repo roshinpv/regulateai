@@ -38,6 +38,31 @@ class UnitCategory(str, Enum):
     GOVERNANCE = "Governance"
     OPERATIONS = "Operations"
 
+class EntityType(str, Enum):
+    CORPORATION = "Corporation"
+    NON_PROFIT = "Non-Profit"
+    SHELL_COMPANY = "Shell Company"
+    FINANCIAL_INTERMEDIARY = "Financial Intermediary"
+    INDIVIDUAL = "Individual"
+    OTHER = "Other"
+
+class SourceType(str, Enum):
+    TRANSACTION_DATA = "Transaction Data"
+    PUBLIC_RECORDS = "Public Records"
+    NEWS_ARTICLES = "News Articles"
+    REGULATORY_FILINGS = "Regulatory Filings"
+    COURT_RECORDS = "Court Records"
+    SANCTIONS_LISTS = "Sanctions Lists"
+    CORPORATE_REGISTRIES = "Corporate Registries"
+    FINANCIAL_STATEMENTS = "Financial Statements"
+    OTHER = "Other"
+
+class VerificationStatus(str, Enum):
+    PENDING = "Pending"
+    VERIFIED = "Verified"
+    DISPUTED = "Disputed"
+    INCONCLUSIVE = "Inconclusive"
+
 # Base schemas
 class UserBase(BaseModel):
     username: str
@@ -98,6 +123,12 @@ class CitationBase(BaseModel):
     regulation_id: str
     text: str
 
+class DocumentUploadBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    regulation_id: Optional[str] = None
+    jurisdiction_id: Optional[str] = None
+
 # Create schemas
 class UserCreate(UserBase):
     password: str
@@ -129,6 +160,11 @@ class RegulatoryUpdateCreate(RegulatoryUpdateBase):
 class ChatMessageCreate(ChatMessageBase):
     user_id: str
     citations: List[CitationBase] = []
+
+class DocumentUploadCreate(DocumentUploadBase):
+    file_path: Optional[str] = None
+    url: Optional[str] = None
+    content_type: str
 
 # Read schemas
 class ComplianceStep(ComplianceStepBase):
@@ -220,21 +256,24 @@ class Regulation(RegulationBase):
     class Config:
         from_attributes = True
 
-    @classmethod
-    def from_orm(cls, obj):
-        # Extract categories from RegulationCategoryAssociation objects
-        if hasattr(obj, 'categories'):
-            obj.categories = [
-                RegulationCategory(category=assoc.category)
-                for assoc in obj.categories
-            ]
-        return super().from_orm(obj)
-
 class User(UserBase):
     id: str
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class DocumentUpload(DocumentUploadBase):
+    id: str
+    file_path: Optional[str] = None
+    url: Optional[str] = None
+    content_type: str
+    uploaded_at: datetime
+    processed: bool = False
+    processed_at: Optional[datetime] = None
+    user_id: str
 
     class Config:
         from_attributes = True
@@ -271,27 +310,104 @@ class AssistantResponse(BaseModel):
     response: str
     citations: List[Citation] = []
 
-# Document Upload schemas
-class DocumentUploadBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    regulation_id: Optional[str] = None
-    jurisdiction_id: Optional[str] = None
+# Entity Analysis Schemas
+class EntityBase(BaseModel):
+    name: str
+    type: EntityType
+    registration_number: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    incorporation_date: Optional[datetime] = None
+    metadata: Optional[Dict[str, Any]] = None
 
-class DocumentUploadCreate(DocumentUploadBase):
-    file_path: Optional[str] = None
-    url: Optional[str] = None
-    content_type: str
+class EntityCreate(EntityBase):
+    pass
 
-class DocumentUpload(DocumentUploadBase):
+class EntityUpdate(EntityBase):
+    analysis_status: Optional[VerificationStatus] = None
+
+class Entity(EntityBase):
     id: str
-    file_path: Optional[str] = None
-    url: Optional[str] = None
-    content_type: str
-    uploaded_at: datetime
-    processed: bool = False
-    processed_at: Optional[datetime] = None
-    user_id: str
+    risk_score: Optional[int] = None
+    confidence_score: Optional[int] = None
+    last_analyzed_at: Optional[datetime] = None
+    analysis_status: VerificationStatus
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+
+class EntitySourceBase(BaseModel):
+    source_type: SourceType
+    source_url: Optional[str] = None
+    source_date: Optional[datetime] = None
+    content: Optional[str] = None
+    reliability_score: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class EntitySource(EntitySourceBase):
+    id: str
+    entity_id: str
+    verification_status: VerificationStatus
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EntityTransactionBase(BaseModel):
+    transaction_date: datetime
+    transaction_type: str
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    counterparty_id: Optional[str] = None
+    risk_indicators: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class EntityTransaction(EntityTransactionBase):
+    id: str
+    entity_id: str
+    created_at: datetime
+    counterparty: Optional[Entity] = None
+
+    class Config:
+        from_attributes = True
+
+class EntityRelationshipBase(BaseModel):
+    relationship_type: str
+    strength_score: Optional[int] = None
+    evidence: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class EntityRelationship(EntityRelationshipBase):
+    id: str
+    from_entity_id: str
+    to_entity_id: str
+    created_at: datetime
+    from_entity: Optional[Entity] = None
+    to_entity: Optional[Entity] = None
+
+    class Config:
+        from_attributes = True
+
+class EntityRiskFactorBase(BaseModel):
+    factor_type: str
+    factor_value: Optional[str] = None
+    risk_contribution: int
+    confidence_score: int
+    evidence: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class EntityRiskFactor(EntityRiskFactorBase):
+    id: str
+    entity_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EntitySearchResult(BaseModel):
+    entity: Entity
+    matched_source: Optional[EntitySource] = None
+    relevance_score: float

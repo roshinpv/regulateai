@@ -7,6 +7,7 @@ import RegulationsPage from './pages/RegulationsPage';
 import ImpactPage from './pages/ImpactPage';
 import AssistantPage from './pages/AssistantPage';
 import SettingsPage from './pages/SettingsPage';
+import EntitiesPage from './pages/EntitiesPage';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -44,6 +45,8 @@ function AppRoutes() {
         <Route path="impact" element={<ImpactPage />} />
         <Route path="assistant" element={<AssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="entities" element={<EntitiesPage />} />
+        <Route path="entities/:id" element={<EntitiesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -60,4 +63,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

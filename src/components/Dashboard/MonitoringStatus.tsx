@@ -17,7 +17,7 @@ const MonitoringStatus: React.FC = () => {
       updateCount: 12
     },
     {
-      name: "CFPB",
+      name: "CFPB", 
       lastUpdate: new Date().toISOString(),
       status: 'active',
       updateCount: 8
@@ -25,7 +25,7 @@ const MonitoringStatus: React.FC = () => {
     {
       name: "FDIC",
       lastUpdate: new Date().toISOString(),
-      status: 'active',
+      status: 'active', 
       updateCount: 5
     },
     {

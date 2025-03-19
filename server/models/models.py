@@ -1,10 +1,11 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, Text, Boolean, Enum, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, Text, Boolean, Enum, JSON, Date, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 import enum
 
 from ..database import Base
+
 
 # Enums
 class JurisdictionType(str, enum.Enum):
@@ -14,6 +15,7 @@ class JurisdictionType(str, enum.Enum):
     STATE = "State/Province"
     LOCAL = "Local"
 
+
 class UnitCategory(str, enum.Enum):
     APPLICATION = "Application"
     INFRASTRUCTURE = "Infrastructure"
@@ -21,10 +23,12 @@ class UnitCategory(str, enum.Enum):
     GOVERNANCE = "Governance"
     OPERATIONS = "Operations"
 
+
 class ImpactLevel(str, enum.Enum):
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
+
 
 class RegulationCategory(str, enum.Enum):
     RISK = "Risk Management"
@@ -41,10 +45,41 @@ class RegulationCategory(str, enum.Enum):
     OPERATIONAL = "Operational Risk"
     OTHER = "Other"
 
+
 class TrainingStatus(str, enum.Enum):
     PENDING = "Pending"
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
+
+
+# Entity Analysis Enums
+class EntityType(str, enum.Enum):
+    CORPORATION = "Corporation"
+    NON_PROFIT = "Non-Profit"
+    SHELL_COMPANY = "Shell Company"
+    FINANCIAL_INTERMEDIARY = "Financial Intermediary"
+    INDIVIDUAL = "Individual"
+    OTHER = "Other"
+
+
+class SourceType(str, enum.Enum):
+    TRANSACTION_DATA = "Transaction Data"
+    PUBLIC_RECORDS = "Public Records"
+    NEWS_ARTICLES = "News Articles"
+    REGULATORY_FILINGS = "Regulatory Filings"
+    COURT_RECORDS = "Court Records"
+    SANCTIONS_LISTS = "Sanctions Lists"
+    CORPORATE_REGISTRIES = "Corporate Registries"
+    FINANCIAL_STATEMENTS = "Financial Statements"
+    OTHER = "Other"
+
+
+class VerificationStatus(str, enum.Enum):
+    PENDING = "Pending"
+    VERIFIED = "Verified"
+    DISPUTED = "Disputed"
+    INCONCLUSIVE = "Inconclusive"
+
 
 # Association Tables
 bank_regulation = Table(
@@ -68,10 +103,11 @@ related_regulations = Table(
     Column('related_regulation_id', String, ForeignKey('regulations.id')),
 )
 
+
 # Models
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
@@ -80,20 +116,21 @@ class User(Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+
     # Relationships
     chat_messages = relationship("ChatMessage", back_populates="user")
     documents = relationship("Document", back_populates="user")
 
+
 class Jurisdiction(Base):
     __tablename__ = "jurisdictions"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
     code = Column(String, nullable=False)
     type = Column(Enum(JurisdictionType), nullable=False)
     parent_id = Column(String, ForeignKey('jurisdictions.id'))
-    
+
     # Relationships
     parent = relationship("Jurisdiction", remote_side=[id])
     sub_jurisdictions = relationship("Jurisdiction")
@@ -101,27 +138,29 @@ class Jurisdiction(Base):
     regulations = relationship("Regulation", back_populates="jurisdiction")
     banks = relationship("Bank", back_populates="jurisdiction")
 
+
 class Agency(Base):
     __tablename__ = "agencies"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
     jurisdiction_id = Column(String, ForeignKey('jurisdictions.id'))
     website = Column(String)
-    
+
     # Relationships
     jurisdiction = relationship("Jurisdiction", back_populates="agencies")
     regulations = relationship("Regulation", back_populates="agency")
 
+
 class Bank(Base):
     __tablename__ = "banks"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False, unique=True)
     jurisdiction_id = Column(String, ForeignKey('jurisdictions.id'))
     size_category = Column(String)
-    
+
     # Relationships
     jurisdiction = relationship("Jurisdiction", back_populates="banks")
     affected_regulations = relationship(
@@ -130,16 +169,17 @@ class Bank(Base):
         back_populates="affected_banks"
     )
 
+
 class RiskAssessmentUnit(Base):
     __tablename__ = "risk_assessment_units"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
     category = Column(Enum(UnitCategory), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     regulations = relationship(
         "Regulation",
@@ -147,9 +187,10 @@ class RiskAssessmentUnit(Base):
         back_populates="responsible_units"
     )
 
+
 class Regulation(Base):
     __tablename__ = "regulations"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     agency_id = Column(String, ForeignKey('agencies.id'), nullable=False)
@@ -161,7 +202,7 @@ class Regulation(Base):
     compliance_deadline = Column(DateTime)
     source_url = Column(String)
     official_reference = Column(String)
-    
+
     # Relationships
     agency = relationship("Agency", back_populates="regulations")
     jurisdiction = relationship("Jurisdiction", back_populates="regulations")
@@ -182,35 +223,38 @@ class Regulation(Base):
     related_regulations = relationship(
         "Regulation",
         secondary=related_regulations,
-        primaryjoin=id==related_regulations.c.regulation_id,
-        secondaryjoin=id==related_regulations.c.related_regulation_id,
+        primaryjoin=id == related_regulations.c.regulation_id,
+        secondaryjoin=id == related_regulations.c.related_regulation_id,
         backref="related_to"
     )
 
+
 class RegulationCategoryAssociation(Base):
     __tablename__ = "regulation_categories"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     regulation_id = Column(String, ForeignKey('regulations.id'), nullable=False)
     category = Column(Enum(RegulationCategory), nullable=False)
-    
+
     # Relationships
     regulation = relationship("Regulation", back_populates="categories")
 
+
 class ComplianceStep(Base):
     __tablename__ = "compliance_steps"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     regulation_id = Column(String, ForeignKey('regulations.id'), nullable=False)
     description = Column(Text, nullable=False)
     order = Column(Integer, nullable=False)
-    
+
     # Relationships
     regulation = relationship("Regulation", back_populates="compliance_steps")
 
+
 class ComplianceAlert(Base):
     __tablename__ = "compliance_alerts"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     description = Column(Text)
@@ -218,51 +262,55 @@ class ComplianceAlert(Base):
     priority = Column(Enum(ImpactLevel), nullable=False)
     regulation_id = Column(String, ForeignKey('regulations.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     regulation = relationship("Regulation", back_populates="alerts")
 
+
 class RegulatoryUpdate(Base):
     __tablename__ = "regulatory_updates"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     date = Column(DateTime, nullable=False)
     agency = Column(String, nullable=False)
     description = Column(Text)
     regulation_id = Column(String, ForeignKey('regulations.id'), nullable=False)
-    
+
     # Relationships
     regulation = relationship("Regulation", back_populates="updates")
 
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     content = Column(Text, nullable=False)
     sender = Column(String, nullable=False)  # 'user' or 'bot'
     timestamp = Column(DateTime, default=datetime.utcnow)
     user_id = Column(String, ForeignKey('users.id'), nullable=False)
-    
+
     # Relationships
     user = relationship("User", back_populates="chat_messages")
     citations = relationship("Citation", back_populates="message")
 
+
 class Citation(Base):
     __tablename__ = "citations"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     message_id = Column(String, ForeignKey('chat_messages.id'), nullable=False)
     regulation_id = Column(String, ForeignKey('regulations.id'), nullable=False)
     text = Column(Text, nullable=False)
-    
+
     # Relationships
     message = relationship("ChatMessage", back_populates="citations")
     regulation = relationship("Regulation")
 
+
 class Document(Base):
     __tablename__ = "documents"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     description = Column(Text)
@@ -275,15 +323,16 @@ class Document(Base):
     regulation_id = Column(String, ForeignKey('regulations.id'))
     jurisdiction_id = Column(String, ForeignKey('jurisdictions.id'))
     user_id = Column(String, ForeignKey('users.id'), nullable=False)
-    
+
     # Relationships
     regulation = relationship("Regulation")
     jurisdiction = relationship("Jurisdiction")
     user = relationship("User", back_populates="documents")
 
+
 class EmployeeTraining(Base):
     __tablename__ = "employee_trainings"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     employee_name = Column(String, nullable=False)
     employee_email = Column(String, nullable=False)
@@ -296,7 +345,7 @@ class EmployeeTraining(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     notification_sent = Column(Boolean, default=False)
     notification_sent_at = Column(DateTime)
-    
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -312,3 +361,117 @@ class EmployeeTraining(Base):
             "notification_sent": self.notification_sent,
             "notification_sent_at": self.notification_sent_at.isoformat() if self.notification_sent_at else None
         }
+
+
+# Entity Analysis Models
+class Entity(Base):
+    __tablename__ = "entities"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    type = Column(Enum(EntityType), nullable=False)
+    registration_number = Column(String)
+    jurisdiction = Column(String)
+    incorporation_date = Column(Date)
+    risk_score = Column(Integer)
+    confidence_score = Column(Integer)
+    last_analyzed_at = Column(DateTime)
+    analysis_status = Column(Enum(VerificationStatus), default=VerificationStatus.PENDING)
+    entity_metadata = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    sources = relationship("EntitySource", back_populates="entity", cascade="all, delete-orphan")
+    transactions = relationship(
+        "EntityTransaction",
+        primaryjoin="Entity.id==EntityTransaction.entity_id",
+        back_populates="entity",
+        cascade="all, delete-orphan"
+    )
+    risk_factors = relationship("EntityRiskFactor", back_populates="entity", cascade="all, delete-orphan")
+    outgoing_relationships = relationship(
+        "EntityRelationship",
+        primaryjoin="Entity.id==EntityRelationship.from_entity_id",
+        back_populates="from_entity",
+        cascade="all, delete-orphan"
+    )
+    incoming_relationships = relationship(
+        "EntityRelationship",
+        primaryjoin="Entity.id==EntityRelationship.to_entity_id",
+        back_populates="to_entity"
+    )
+
+
+class EntitySource(Base):
+    __tablename__ = "entity_sources"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_id = Column(String, ForeignKey("entities.id", ondelete="CASCADE"))
+    source_type = Column(Enum(SourceType), nullable=False)
+    source_url = Column(String)
+    source_date = Column(DateTime)
+    content = Column(Text)
+    reliability_score = Column(Integer)
+    verification_status = Column(Enum(VerificationStatus), default=VerificationStatus.PENDING)
+    verified_at = Column(DateTime)
+    verified_by = Column(String, ForeignKey("users.id"))
+    source_metadata = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity", back_populates="sources")
+    verifier = relationship("User")
+
+
+class EntityTransaction(Base):
+    __tablename__ = "entity_transactions"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_id = Column(String, ForeignKey("entities.id", ondelete="CASCADE"))
+    transaction_date = Column(DateTime, nullable=False)
+    transaction_type = Column(String, nullable=False)
+    amount = Column(Numeric(20, 2))
+    currency = Column(String)
+    counterparty_id = Column(String, ForeignKey("entities.id"))
+    risk_indicators = Column(JSON, default={})
+    transaction_metadata = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity", foreign_keys=[entity_id], back_populates="transactions")
+    counterparty = relationship("Entity", foreign_keys=[counterparty_id])
+
+
+class EntityRelationship(Base):
+    __tablename__ = "entity_relationships"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    from_entity_id = Column(String, ForeignKey("entities.id", ondelete="CASCADE"))
+    to_entity_id = Column(String, ForeignKey("entities.id", ondelete="CASCADE"))
+    relationship_type = Column(String, nullable=False)
+    strength_score = Column(Integer)
+    evidence = Column(JSON, default={})
+    relationship_metadata = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    from_entity = relationship("Entity", foreign_keys=[from_entity_id], back_populates="outgoing_relationships")
+    to_entity = relationship("Entity", foreign_keys=[to_entity_id], back_populates="incoming_relationships")
+
+
+class EntityRiskFactor(Base):
+    __tablename__ = "entity_risk_factors"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    entity_id = Column(String, ForeignKey("entities.id", ondelete="CASCADE"))
+    factor_type = Column(String, nullable=False)
+    factor_value = Column(String)
+    risk_contribution = Column(Integer, nullable=False)
+    confidence_score = Column(Integer, nullable=False)
+    evidence = Column(JSON, default={})
+    risk_metadata = Column(JSON, default={})
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity", back_populates="risk_factors")
